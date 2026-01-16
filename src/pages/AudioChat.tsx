@@ -83,7 +83,7 @@ const AudioChat = () => {
                     </button>
                   </DrawerTrigger>
                   <DrawerContent className="h-[70vh]">
-                    <ChatPanel />
+                    {/* <ChatPanel /> */}
                   </DrawerContent>
                 </Drawer>
               </div>
@@ -93,7 +93,7 @@ const AudioChat = () => {
 
         {/* Chat Section - Hidden on mobile */}
         <div className="hidden md:block md:flex-[3] md:min-w-[280px] md:max-w-[400px]">
-          <ChatPanel />
+          {/* <ChatPanel /> */}
         </div>
       </div>
     </div>

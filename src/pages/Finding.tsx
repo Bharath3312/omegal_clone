@@ -2,8 +2,34 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import Loader from "@/components/chat/Loader";
+import { useEffect } from "react";
+import { socket } from "@/services/socket";
+import { setRoomId, setCreater  } from "@/features/reduxStore";
+import { useAppDispatch } from "@/hooks/user-app-dispath";
 
 const Finding = () => {
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    console.log("use effect in fingind page");
+    // socket.connect()
+   socket.emit("join_queue", { type: "video" });
+
+   socket.on('waiting',()=>{
+      console.log("waiting for a match");
+      dispatch(setCreater(true));
+   })
+   socket.on("matched", (roomId:string) => {
+     dispatch(setRoomId(roomId));
+     console.log("user joined",roomId);
+     handleConnect();
+   });
+
+   return () => {
+     socket.off("matched");
+     socket.off("waiting");
+   };
+  }, []);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const chatType = searchParams.get("type") || "video";
@@ -11,6 +37,9 @@ const Finding = () => {
   const handleConnect = () => {
     navigate(chatType === "video" ? "/video-chat" : "/audio-chat");
   };
+  ////join room logic can be added here
+  /// then waiting for another user to join the room
+  /// perhaps stop searching button can also trigger leaving the room
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 md:p-6">
