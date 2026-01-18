@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mic, MicOff, Video, VideoOff, PhoneOff, ArrowLeft, MessageCircle } from "lucide-react";
 import VideoPlaceholder from "@/components/chat/VideoPlaceholder";
@@ -10,31 +10,200 @@ import {
   DrawerContent,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-
-type ConnectionStatus = "connected" | "disconnected";
+import { socket } from "@/services/socket";
+import { useUserWebRTC } from "@/hooks/user-webrtc";
+import { useAppSelector } from "@/hooks/use-app-selector";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog"
+import VideoBox from "@/components/chat/videoBox";
+import Loader from "@/components/chat/Loader";
+import { useAppDispatch } from "@/hooks/user-app-dispath";
+import { resetState } from "@/features/reduxStore";
 
 const VideoChat = () => {
   const navigate = useNavigate();
+  const roomId = useAppSelector(state => state.global.roomId);
+  const creater = useAppSelector(state => state.global.creater);
+  console.log(roomId,"this is vidochat",creater);
+  useEffect(() => {
+    if (!roomId)  navigate("/");
+  }, [roomId, navigate]);
+  
+  if (!roomId) {
+    return null;
+  }
+  const disPatch = useAppDispatch()
+  const [messages, setMessages] = useState<{ text: string; isUser: boolean; time: string }[]>([]);
+  const  {isConnected,peerConnection,createOffer,createChannel,listenChannel,sendMessage,closeConnection} = useUserWebRTC(roomId);
+  
+  console.log(isConnected,"isconnected...........");
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [remoteMediaState, setRemoteMediaState] = useState({
+    mic: true,
+    camera: true,
+  });
+  const handleIncomeingMsg = (msg:string)=>{
+    try {
+      const data = JSON.parse(msg);
+      console.log(data,"message............................");
+      if(data?.type === "media-state"){
+          setRemoteMediaState({
+            mic : data?.mic,camera : data?.camera
+          })
+          return
+      }
+      if(data?.type === "chat"){
+        setMessages(prev =>[
+          ...prev,
+          { text: data?.msg, isUser: false, time: new Date().toLocaleTimeString() }
+        ])
+
+      }
+    } catch (error) {
+      console.log("catch is handleincomingmsg function",error);
+      
+    }
+  }
+  useEffect(()=>{
+    console.log("streaminggggg");
+    
+    if (!peerConnection || localStream) return;
+    const startCamera = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+
+      setLocalStream(stream);
+
+      stream.getTracks().forEach(track => {
+        peerConnection.addTrack(track, stream);
+      });
+
+      // setup remote stream
+      const remote = new MediaStream();
+      setRemoteStream(remote);
+
+      peerConnection.ontrack = (event) => {
+        event.streams[0].getTracks().forEach(track => {
+          remote.addTrack(track);
+        });
+      };
+    };
+    startCamera();
+  },[peerConnection])
+  
+  useEffect(() => {
+    if (!peerConnection || isConnected || !localStream) return;
+    console.log("useEffect in vidochatComponent");
+    if (creater) 
+      createChannel(handleIncomeingMsg);
+    else 
+      listenChannel(handleIncomeingMsg);
+    
+    socket.once("peer_left", () => {
+      console.log("Peer has left the call");
+      closeConnection(disPatch);
+      // disPatch(resetState());
+    });
+    return () => {
+      console.log("unmount.............");
+    }
+  }, [peerConnection,isConnected,localStream]);
+
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
-  const [status, setStatus] = useState<ConnectionStatus>("connected");
+  
+  const handleControl = (type:'audio'|'video')=>{
+      if(!localStream) return;
+      console.log(type,"typee");
+      let muteIS = isMuted;
+      let cameraOff = isCameraOff;
+      if(type === 'audio'){
+          const status = localStream.getAudioTracks()[0].enabled;
+          localStream.getAudioTracks()[0].enabled = !status;
+          console.log(status,"status.......");          
+          setIsMuted(status);
+          muteIS = status;
+          console.log(isMuted,"ismuted",muteIS);
+          
+      }
+      else{
+        const status = localStream.getVideoTracks()[0].enabled;
+        localStream.getVideoTracks()[0].enabled = !status;
+        console.log(status,"status.......");
+        setIsCameraOff(status);
+        cameraOff = status
+          console.log(isCameraOff,"isCameraOff",cameraOff);
 
+      }
+      const msg =  JSON.stringify({
+          type :"media-state",
+          mute : !muteIS,
+          camera : !cameraOff
+      })
+      console.log(msg,"msg......//////./././.");
+      
+      sendMessage(msg);
+  }
   const handleEndCall = () => {
-    setStatus("disconnected");
+    localStream?.getTracks().forEach(t => t.stop());
+    remoteStream?.getTracks().forEach(t => t.stop());
+    closeConnection(disPatch);
+    // disPatch(resetState());
+    socket.emit("leave",true);
   };
+  const handleSendMessage = (text: string) => {
+  if(!isConnected) return 
+  sendMessage(JSON.stringify({type : 'chat' , msg : text}));
+  setMessages(prev => [
+    ...prev,
+    { text, isUser: true, time: new Date().toLocaleTimeString() }
+  ]);
+};
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header */}
       <header className="h-12 md:h-14 border-b border-border flex items-center px-3 md:px-4 shrink-0">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="px-2 md:px-3">
-          <ArrowLeft className="w-4 h-4 md:mr-2" />
-          <span className="hidden md:inline">Leave</span>
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm"  className="px-2 md:px-3">
+                <ArrowLeft className="w-4 h-4 md:mr-2" />
+                <span className="hidden md:inline">Leave</span>
+              </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Leave the Video Chat ?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to leave ?
+                 {isConnected ? "your current connection will be closed." :".."} 
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={()=>{handleEndCall();navigate('/');}}>Yes, Leave</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        
         <div className="flex-1 text-center">
           <span className="text-sm font-medium text-foreground">Video Chat</span>
-          <span className={`ml-2 text-xs ${status === "connected" ? "text-green-500" : "text-destructive"}`}>
-            • {status === "connected" ? "Connected" : "Disconnected"}
+          <span className={`ml-2 text-xs ${isConnected ? "text-green-500" : "text-destructive"}`}>
+            • {isConnected ? "Connected" : "Disconnected"}
           </span>
         </div>
         <div className="w-10 md:w-20" />
@@ -44,7 +213,8 @@ const VideoChat = () => {
       <div className="flex-1 flex overflow-hidden">
         {/* Video Section */}
         <div className="flex-1 md:flex-[7] flex flex-col p-2 md:p-4 gap-2 md:gap-4">
-          {status === "disconnected" ? (
+          {!isConnected ? (
+
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center space-y-4 px-4">
                 <p className="text-lg md:text-xl text-muted-foreground">Stranger disconnected</p>
@@ -55,20 +225,53 @@ const VideoChat = () => {
             </div>
           ) : (
             <>
-              {/* Video Grid - PiP on mobile */}
               <div className="flex-1 relative">
-                {/* Stranger video - full size */}
-                <VideoPlaceholder label="Stranger" className="w-full h-full" />
-                
-                {/* Self video - PiP on mobile, stacked on desktop */}
-                <div className="absolute top-2 right-2 w-24 h-32 md:hidden">
-                  <VideoPlaceholder label="You" isUser className="w-full h-full shadow-lg" />
+
+                {/* Video Grid - PiP on mobile */}
+                <div className="md:hidden w-full h-full relative">
+                  {/* Stranger video - full size */}
+                  {
+                    !remoteMediaState.camera  ? (
+                        <VideoPlaceholder label="Stranger" className="w-full h-full" />
+                    )
+                    :
+                     ( <VideoBox stream={remoteStream} />)
+                  }
+                  
+                  
+                  {/* Self video - PiP on mobile, stacked on desktop */}
+                  <div className="absolute top-2 right-2 w-24 h-32">
+                    {
+                      isCameraOff ? (
+                         <VideoPlaceholder label="You" isUser className="w-full h-full shadow-lg" />
+                      )
+                      :(
+                        <VideoBox stream={localStream} muted />
+                      )
+                    }
+                  </div>
                 </div>
-                
                 {/* Desktop: stacked layout */}
                 <div className="hidden md:grid md:grid-rows-2 md:gap-4 md:absolute md:inset-0">
-                  <VideoPlaceholder label="You" isUser className="w-full h-full" />
-                  <VideoPlaceholder label="Stranger" className="w-full h-full" />
+                    {/* <VideoBox stream={localStream} muted /> */}
+                    {/* <VideoBox stream={remoteStream} /> */}
+                    {
+                      isCameraOff ? (
+                         <VideoPlaceholder label="You" isUser className="w-full h-full shadow-lg" />
+                      )
+                      :(
+                        <VideoBox stream={localStream} muted />
+                      )
+                    }
+                    {
+                    !remoteMediaState.camera  ? (
+                        <VideoPlaceholder label="Stranger" className="w-full h-full" />
+                    )
+                    :
+                     ( <VideoBox stream={remoteStream} />)
+                  }
+                  {/* <VideoPlaceholder label="You" isUser className="w-full h-full" />
+                  <VideoPlaceholder label="Stranger" className="w-full h-full" /> */}
                 </div>
               </div>
 
@@ -78,13 +281,13 @@ const VideoChat = () => {
                   icon={isMuted ? MicOff : Mic}
                   label={isMuted ? "Unmute" : "Mute"}
                   variant={isMuted ? "active" : "default"}
-                  onClick={() => setIsMuted(!isMuted)}
+                  onClick={() => handleControl('audio')}
                 />
                 <ControlButton
                   icon={isCameraOff ? VideoOff : Video}
                   label={isCameraOff ? "Start" : "Stop"}
                   variant={isCameraOff ? "active" : "default"}
-                  onClick={() => setIsCameraOff(!isCameraOff)}
+                  onClick={() => handleControl('video')}
                 />
                 <ControlButton
                   icon={PhoneOff}
@@ -102,7 +305,10 @@ const VideoChat = () => {
                     </button>
                   </DrawerTrigger>
                   <DrawerContent className="h-[70vh]">
-                    <ChatPanel />
+                    <ChatPanel 
+                    messages={messages}
+                    onSend={handleSendMessage}
+                    />
                   </DrawerContent>
                 </Drawer>
               </div>
@@ -112,7 +318,10 @@ const VideoChat = () => {
 
         {/* Chat Section - Hidden on mobile */}
         <div className="hidden md:block md:flex-[3] md:min-w-[280px] md:max-w-[400px]">
-          <ChatPanel />
+          <ChatPanel 
+          messages={messages}
+          onSend={handleSendMessage}
+          />
         </div>
       </div>
     </div>
