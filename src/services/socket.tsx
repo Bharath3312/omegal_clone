@@ -1,5 +1,5 @@
 import { io } from "socket.io-client";
 
-export const socket = io("http://10.135.171.136:5000", {
+export const socket = io("https://signaling-server-7abi.onrender.com", {
   transports: ["websocket"]
 });

@@ -25,20 +25,58 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog"
 import VideoBox from "@/components/chat/videoBox";
+import Loader from "@/components/chat/Loader";
+import { useAppDispatch } from "@/hooks/user-app-dispath";
+import { resetState } from "@/features/reduxStore";
 
 const VideoChat = () => {
   const navigate = useNavigate();
   const roomId = useAppSelector(state => state.global.roomId);
   const creater = useAppSelector(state => state.global.creater);
   console.log(roomId,"this is vidochat",creater);
-  if(!roomId) navigate("/");
+  useEffect(() => {
+    if (!roomId)  navigate("/");
+  }, [roomId, navigate]);
+  
+  if (!roomId) {
+    return null;
+  }
+  const disPatch = useAppDispatch()
   const [messages, setMessages] = useState<{ text: string; isUser: boolean; time: string }[]>([]);
-
-  const  {isConnected,createOffer,peerConnection,createChannel,listenChannel,sendMessage,closeConnection} = useUserWebRTC(roomId);
+  const  {isConnected,peerConnection,createOffer,createChannel,listenChannel,sendMessage,closeConnection} = useUserWebRTC(roomId);
+  
   console.log(isConnected,"isconnected...........");
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [remoteMediaState, setRemoteMediaState] = useState({
+    mic: true,
+    camera: true,
+  });
+  const handleIncomeingMsg = (msg:string)=>{
+    try {
+      const data = JSON.parse(msg);
+      console.log(data,"message............................");
+      if(data?.type === "media-state"){
+          setRemoteMediaState({
+            mic : data?.mic,camera : data?.camera
+          })
+          return
+      }
+      if(data?.type === "chat"){
+        setMessages(prev =>[
+          ...prev,
+          { text: data?.msg, isUser: false, time: new Date().toLocaleTimeString() }
+        ])
+
+      }
+    } catch (error) {
+      console.log("catch is handleincomingmsg function",error);
+      
+    }
+  }
   useEffect(()=>{
+    console.log("streaminggggg");
+    
     if (!peerConnection || localStream) return;
     const startCamera = async () => {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -68,25 +106,15 @@ const VideoChat = () => {
   useEffect(() => {
     if (!peerConnection || isConnected || !localStream) return;
     console.log("useEffect in vidochatComponent");
-    if (creater) {
-      createChannel((msg) => {
-        setMessages(prev => [
-          ...prev,
-          { text: msg, isUser: false, time: new Date().toLocaleTimeString() }
-        ]);
-      });
-      createOffer();
-    } else {
-      listenChannel((msg) => {
-        setMessages(prev => [
-          ...prev,
-          { text: msg, isUser: false, time: new Date().toLocaleTimeString() }
-        ]);
-      });
-    }
+    if (creater) 
+      createChannel(handleIncomeingMsg);
+    else 
+      listenChannel(handleIncomeingMsg);
+    
     socket.once("peer_left", () => {
       console.log("Peer has left the call");
-      closeConnection();
+      closeConnection(disPatch);
+      // disPatch(resetState());
     });
     return () => {
       console.log("unmount.............");
@@ -96,16 +124,48 @@ const VideoChat = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   
+  const handleControl = (type:'audio'|'video')=>{
+      if(!localStream) return;
+      console.log(type,"typee");
+      let muteIS = isMuted;
+      let cameraOff = isCameraOff;
+      if(type === 'audio'){
+          const status = localStream.getAudioTracks()[0].enabled;
+          localStream.getAudioTracks()[0].enabled = !status;
+          console.log(status,"status.......");          
+          setIsMuted(status);
+          muteIS = status;
+          console.log(isMuted,"ismuted",muteIS);
+          
+      }
+      else{
+        const status = localStream.getVideoTracks()[0].enabled;
+        localStream.getVideoTracks()[0].enabled = !status;
+        console.log(status,"status.......");
+        setIsCameraOff(status);
+        cameraOff = status
+          console.log(isCameraOff,"isCameraOff",cameraOff);
 
+      }
+      const msg =  JSON.stringify({
+          type :"media-state",
+          mute : !muteIS,
+          camera : !cameraOff
+      })
+      console.log(msg,"msg......//////./././.");
+      
+      sendMessage(msg);
+  }
   const handleEndCall = () => {
     localStream?.getTracks().forEach(t => t.stop());
-  remoteStream?.getTracks().forEach(t => t.stop());
-    closeConnection();
+    remoteStream?.getTracks().forEach(t => t.stop());
+    closeConnection(disPatch);
+    // disPatch(resetState());
     socket.emit("leave",true);
   };
   const handleSendMessage = (text: string) => {
   if(!isConnected) return 
-  sendMessage(text);
+  sendMessage(JSON.stringify({type : 'chat' , msg : text}));
   setMessages(prev => [
     ...prev,
     { text, isUser: true, time: new Date().toLocaleTimeString() }
@@ -153,7 +213,6 @@ const VideoChat = () => {
       <div className="flex-1 flex overflow-hidden">
         {/* Video Section */}
         <div className="flex-1 md:flex-[7] flex flex-col p-2 md:p-4 gap-2 md:gap-4">
-          {/* {status === "disconnected" ? ( */}
           {!isConnected ? (
 
             <div className="flex-1 flex items-center justify-center">
@@ -171,20 +230,46 @@ const VideoChat = () => {
                 {/* Video Grid - PiP on mobile */}
                 <div className="md:hidden w-full h-full relative">
                   {/* Stranger video - full size */}
-                  {/* <VideoPlaceholder label="Stranger" className="w-full h-full" /> */}
-                  <VideoBox stream={remoteStream} />
+                  {
+                    !remoteMediaState.camera  ? (
+                        <VideoPlaceholder label="Stranger" className="w-full h-full" />
+                    )
+                    :
+                     ( <VideoBox stream={remoteStream} />)
+                  }
+                  
                   
                   {/* Self video - PiP on mobile, stacked on desktop */}
                   <div className="absolute top-2 right-2 w-24 h-32">
-                    {/* <VideoPlaceholder label="You" isUser className="w-full h-full shadow-lg" /> */}
-                     <VideoBox stream={localStream} muted />
-
+                    {
+                      isCameraOff ? (
+                         <VideoPlaceholder label="You" isUser className="w-full h-full shadow-lg" />
+                      )
+                      :(
+                        <VideoBox stream={localStream} muted />
+                      )
+                    }
                   </div>
                 </div>
                 {/* Desktop: stacked layout */}
                 <div className="hidden md:grid md:grid-rows-2 md:gap-4 md:absolute md:inset-0">
-                    <VideoBox stream={localStream} muted />
-                    <VideoBox stream={remoteStream} />
+                    {/* <VideoBox stream={localStream} muted /> */}
+                    {/* <VideoBox stream={remoteStream} /> */}
+                    {
+                      isCameraOff ? (
+                         <VideoPlaceholder label="You" isUser className="w-full h-full shadow-lg" />
+                      )
+                      :(
+                        <VideoBox stream={localStream} muted />
+                      )
+                    }
+                    {
+                    !remoteMediaState.camera  ? (
+                        <VideoPlaceholder label="Stranger" className="w-full h-full" />
+                    )
+                    :
+                     ( <VideoBox stream={remoteStream} />)
+                  }
                   {/* <VideoPlaceholder label="You" isUser className="w-full h-full" />
                   <VideoPlaceholder label="Stranger" className="w-full h-full" /> */}
                 </div>
@@ -196,13 +281,13 @@ const VideoChat = () => {
                   icon={isMuted ? MicOff : Mic}
                   label={isMuted ? "Unmute" : "Mute"}
                   variant={isMuted ? "active" : "default"}
-                  onClick={() => setIsMuted(!isMuted)}
+                  onClick={() => handleControl('audio')}
                 />
                 <ControlButton
                   icon={isCameraOff ? VideoOff : Video}
                   label={isCameraOff ? "Start" : "Stop"}
                   variant={isCameraOff ? "active" : "default"}
-                  onClick={() => setIsCameraOff(!isCameraOff)}
+                  onClick={() => handleControl('video')}
                 />
                 <ControlButton
                   icon={PhoneOff}

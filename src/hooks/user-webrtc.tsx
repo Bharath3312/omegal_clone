@@ -1,5 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import { socket } from '@/services/socket';
+import { AppDispatch } from '@/store';
+import { resetState } from '@/features/reduxStore';
 
 
 export function useUserWebRTC(roomId: string) {
@@ -13,7 +15,29 @@ export function useUserWebRTC(roomId: string) {
     const peerConnection = new RTCPeerConnection({
     //   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
         iceServers: [
-            ........
+            {
+                urls: "stun:stun.relay.metered.ca:80",
+            },
+            {
+                urls: "turn:in.relay.metered.ca:80",
+                username: "4b3aa6c4917d1978c548c190",
+                credential: "VAFdi3LHkNUq3AAk",
+            },
+            {
+                urls: "turn:in.relay.metered.ca:80?transport=tcp",
+                username: "4b3aa6c4917d1978c548c190",
+                credential: "VAFdi3LHkNUq3AAk",
+            },
+            {
+                urls: "turn:in.relay.metered.ca:443",
+                username: "4b3aa6c4917d1978c548c190",
+                credential: "VAFdi3LHkNUq3AAk",
+            },
+            {
+                urls: "turns:in.relay.metered.ca:443?transport=tcp",
+                username: "4b3aa6c4917d1978c548c190",
+                credential: "VAFdi3LHkNUq3AAk",
+            },
         ],
     });
     peerConnectionRef.current = peerConnection;
@@ -78,30 +102,6 @@ export function useUserWebRTC(roomId: string) {
     };
   }, []);
 
-  // const createChannel = () => {
-  //     const pc = peerConnectionRef.current;
-  //     if (!pc) {
-  //       console.warn("PeerConnection not ready yet");
-  //       return;
-  //     }
-
-  //     const dc = pc.createDataChannel("peer");
-
-  //     dc.onopen = () => console.log("DataChannel opened");
-  //     dc.onmessage = (e) => console.log("Message:", e.data);
-  // };
-
-  // const listenChannel = () => {
-  //   const pc = peerConnectionRef.current;
-  //   if (!pc) return;
-
-  //   pc.ondatachannel = (event) => {
-  //     const dc = event.channel;
-
-  //     dc.onopen = () => console.log("DataChannel opened");
-  //     dc.onmessage = (e) => console.log("Message:", e.data);
-  //   };
-  // };
   const createChannel = (onMessage: (msg: string) => void) => {
     if (!peerConnectionRef.current) return;
 
@@ -110,6 +110,7 @@ export function useUserWebRTC(roomId: string) {
 
     dc.onopen = () => console.log("Chat channel open");
     dc.onmessage = (e) => onMessage(e.data);
+    createOffer();
   };
 
   const listenChannel = (onMessage: (msg: string) => void) => {
@@ -118,8 +119,9 @@ export function useUserWebRTC(roomId: string) {
     peerConnectionRef.current.ondatachannel = (event) => {
       const dc = event.channel;
       dataChannelRef.current = dc;
-      dc.onopen = () =>{alert("Chat channel open"); console.log("Chat channel open");}
-      dc.onmessage = (e) => onMessage(e.data);
+      dc.onopen = () =>{ console.log("Chat channel open");}
+      dc.onmessage = (e) =>{console.log(e.data,"listen channel*************************************");
+        onMessage(e.data);}
     };
   };
 
@@ -149,7 +151,7 @@ export function useUserWebRTC(roomId: string) {
       
     }
   };
-const closeConnection = () => {
+const closeConnection = (disPatch : AppDispatch) => {
   // 1. Close data channel
   if (dataChannelRef.current) {
     dataChannelRef.current.close();
@@ -165,7 +167,9 @@ const closeConnection = () => {
     // 3. Close peer connection
     peerConnectionRef.current.close();
     peerConnectionRef.current = null;
+    // const dispatch = useAppDispatch();
   }
+  // disPatch(resetState())
   setIsConnected(false);
   console.log("WebRTC connection closed locally");
 };
