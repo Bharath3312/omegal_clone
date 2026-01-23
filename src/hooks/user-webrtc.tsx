@@ -151,7 +151,7 @@ export function useUserWebRTC(roomId: string) {
       
     }
   };
-const closeConnection = (disPatch : AppDispatch) => {
+const closeConnection = () => {
   // 1. Close data channel
   if (dataChannelRef.current) {
     dataChannelRef.current.close();

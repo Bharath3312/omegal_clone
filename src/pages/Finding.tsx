@@ -67,14 +67,14 @@ const Finding = () => {
           </Button>
           
           {/* Demo button to simulate connection */}
-          <Button
+          {/* <Button
             variant="ghost"
             size="sm"
             className="text-muted-foreground"
-            onClick={handleConnect}
+            onClick={() => navigate("/audio-chat")}
           >
             (Demo: Skip to chat)
-          </Button>
+          </Button> */}
         </div>
       </div>
     </div>
