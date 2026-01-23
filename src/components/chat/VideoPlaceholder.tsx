@@ -1,13 +1,14 @@
-import { User } from "lucide-react";
+import { User ,CameraOff} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface VideoPlaceholderProps {
   label: string;
   isUser?: boolean;
   className?: string;
+  type?: 'cameraOff' | 'user'  ;
 }
 
-const VideoPlaceholder = ({ label, isUser = false, className }: VideoPlaceholderProps) => {
+const VideoPlaceholder = ({ label, isUser = false, className, type }: VideoPlaceholderProps) => {
   return (
     <div
       className={cn(
@@ -17,11 +18,12 @@ const VideoPlaceholder = ({ label, isUser = false, className }: VideoPlaceholder
     >
       <div className="flex flex-col items-center gap-3 text-muted-foreground">
         <div className={cn(
-          "w-16 h-16 rounded-full flex items-center justify-center",
-          isUser ? "bg-primary/20" : "bg-secondary"
-        )}>
-          <User className="w-8 h-8" />
-        </div>
+            "w-16 h-16 rounded-full flex items-center justify-center",
+            isUser ? "bg-primary/20" : "bg-secondary"
+          )}>
+           {type === 'cameraOff' && <CameraOff className="w-8 h-8 text-yellow-500" />}
+            {type === 'user' && <User className="w-8 h-8" /> }
+         </div>
       </div>
       
       <div className="absolute bottom-3 left-3 px-3 py-1 bg-background/80 backdrop-blur-sm rounded-md text-xs font-medium text-foreground">
