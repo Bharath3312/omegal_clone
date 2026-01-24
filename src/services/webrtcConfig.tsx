@@ -1,5 +1,4 @@
 const isProd = import.meta.env.PROD;
-console.log("isProd", isProd);
 export const rtcConfig: RTCConfiguration = isProd
   ? {
       iceServers: [

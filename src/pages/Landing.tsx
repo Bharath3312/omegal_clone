@@ -12,9 +12,10 @@ const Landing = () => {
         <div className="space-y-3 md:space-y-4">
           <div className="w-14 h-14 md:w-16 md:h-16 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
             <MessageCircle className="w-7 h-7 md:w-8 md:h-8 text-primary" />
+            {/* <img src="/public/android-chrome-512x512.png" alt="" className="w-7 h-7 md:w-8 md:h-8 text-primary"/> */}
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
-            Anonymous Chat
+            Talk with Strangers
           </h1>
           <p className="text-muted-foreground text-base md:text-lg px-4">
             Connect with strangers instantly. No signup required.
@@ -37,9 +38,11 @@ const Landing = () => {
             variant="secondary"
             className="w-full h-14 md:h-14 text-base md:text-lg gap-3"
             onClick={() => navigate("/finding?type=audio")}
+            disabled={true}
           >
             <Headphones className="w-5 h-5" />
             Audio Chat
+            <span className="text-red-500">Soon!!</span>
           </Button>
         </div>
 
