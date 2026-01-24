@@ -1,7 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import { socket } from '@/services/socket';
-import { AppDispatch } from '@/store';
-import { resetState } from '@/features/reduxStore';
+import { rtcConfig } from '@/services/webrtcConfig';
 
 
 export function useUserWebRTC(roomId: string) {
@@ -12,34 +11,9 @@ export function useUserWebRTC(roomId: string) {
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
 
   useEffect(() => {
-    const peerConnection = new RTCPeerConnection({
-    //   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-        iceServers: [
-            {
-                urls: "stun:stun.relay.metered.ca:80",
-            },
-            {
-                urls: "turn:in.relay.metered.ca:80",
-                username: "4b3aa6c4917d1978c548c190",
-                credential: "VAFdi3LHkNUq3AAk",
-            },
-            {
-                urls: "turn:in.relay.metered.ca:80?transport=tcp",
-                username: "4b3aa6c4917d1978c548c190",
-                credential: "VAFdi3LHkNUq3AAk",
-            },
-            {
-                urls: "turn:in.relay.metered.ca:443",
-                username: "4b3aa6c4917d1978c548c190",
-                credential: "VAFdi3LHkNUq3AAk",
-            },
-            {
-                urls: "turns:in.relay.metered.ca:443?transport=tcp",
-                username: "4b3aa6c4917d1978c548c190",
-                credential: "VAFdi3LHkNUq3AAk",
-            },
-        ],
-    });
+    console.log(rtcConfig,"rtcConfig in useUserWebRTC");
+    const peerConnection = new RTCPeerConnection(rtcConfig);
+  
     peerConnectionRef.current = peerConnection;
     setPcReady(true);
     peerConnection.onicecandidate = (event) => {
@@ -176,53 +150,3 @@ const closeConnection = () => {
 
   return { isConnected, createOffer, peerConnection: peerConnectionRef.current, createChannel,listenChannel,sendMessage, closeConnection };
 }
-
-
-
-
-
-
-
-                        
-//API Key for the credential: a507218ffe3bd707fb6c0037ec5fb95ac9d6
-
-// // Calling the REST API TO fetch the TURN Server Credentials
-// const response = 
-//   await fetch("https://myomegle.metered.live/api/v1/turn/credentials?apiKey=a507218ffe3bd707fb6c0037ec5fb95ac9d6");
-
-// // Saving the response in the iceServers array
-// const iceServers = await response.json();
-
-// // Using the iceServers array in the RTCPeerConnection method
-// var myPeerConnection = new RTCPeerConnection({
-//   iceServers: iceServers
-// });
-
-
-// var myPeerConnection = new RTCPeerConnection({
-//   iceServers: [
-//       {
-//         urls: "stun:stun.relay.metered.ca:80",
-//       },
-//       {
-//         urls: "turn:in.relay.metered.ca:80",
-//         username: "4b3aa6c4917d1978c548c190",
-//         credential: "VAFdi3LHkNUq3AAk",
-//       },
-//       {
-//         urls: "turn:in.relay.metered.ca:80?transport=tcp",
-//         username: "4b3aa6c4917d1978c548c190",
-//         credential: "VAFdi3LHkNUq3AAk",
-//       },
-//       {
-//         urls: "turn:in.relay.metered.ca:443",
-//         username: "4b3aa6c4917d1978c548c190",
-//         credential: "VAFdi3LHkNUq3AAk",
-//       },
-//       {
-//         urls: "turns:in.relay.metered.ca:443?transport=tcp",
-//         username: "4b3aa6c4917d1978c548c190",
-//         credential: "VAFdi3LHkNUq3AAk",
-//       },
-//   ],
-// });
