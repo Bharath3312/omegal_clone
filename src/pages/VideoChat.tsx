@@ -97,8 +97,6 @@ console.log("room id :",roomId , "Creater :",creater);
       setIsCameraOff(!track.enabled); 
     } 
     sendData[type] = track.enabled;
-    console.log(type , "isMuted :",isMuted , "iscameraoff :",isCameraOff,"sendData :",sendData);
-
     sendMessage(JSON.stringify(sendData)); 
   };
   const handleEndCall = () => { 

@@ -4,20 +4,17 @@ import { rtcConfig } from '@/services/webrtcConfig';
 
 
 export function useUserWebRTC(roomId: string) {
-  console.log("useUserWebRTC called with roomId:", roomId);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [pcReady, setPcReady] = useState(false);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
 
   useEffect(() => {
-    console.log(rtcConfig,"rtcConfig in useUserWebRTC");
     const peerConnection = new RTCPeerConnection(rtcConfig);
   
     peerConnectionRef.current = peerConnection;
     setPcReady(true);
     peerConnection.onicecandidate = (event) => {
-      // console.log("onicecandidate event:", event);
       if (event.candidate) {
         socket.emit('webrtc-ice-candidate', {
           roomId,
@@ -94,7 +91,7 @@ export function useUserWebRTC(roomId: string) {
       const dc = event.channel;
       dataChannelRef.current = dc;
       dc.onopen = () =>{ console.log("Chat channel open");}
-      dc.onmessage = (e) =>{console.log(e.data,"listen channel*************************************");
+      dc.onmessage = (e) =>{
         onMessage(e.data);}
     };
   };
@@ -103,16 +100,13 @@ export function useUserWebRTC(roomId: string) {
     dataChannelRef.current?.send(msg);
   };
   const createOffer = async () => {
-    console.log("createOffer......");
     
     try {
     // debugger
       const peerConnection = peerConnectionRef.current;
       if (peerConnection) {
-      console.log("peerconnection is have");
       
         const offer = await peerConnection.createOffer();
-        console.log("create offer success");
         
         await peerConnection.setLocalDescription(offer);
         socket.emit('webrtc-offer', {

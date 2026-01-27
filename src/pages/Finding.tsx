@@ -9,19 +9,17 @@ import { useAppDispatch } from "@/hooks/user-app-dispath";
 
 const Finding = () => {
   const dispatch = useAppDispatch();
-
+  const [searchParams] = useSearchParams();
+  const chatType = searchParams.get("type") || "video";
   useEffect(() => {
-    console.log("use effect in fingind page");
     // socket.connect()
-   socket.emit("join_queue", { type: "video" });
+   socket.emit("join_queue", { type: chatType ?? 'video' });
 
    socket.on('waiting',()=>{
-      console.log("waiting for a match");
       dispatch(setCreater(true));
    })
    socket.on("matched", (roomId:string) => {
      dispatch(setRoomId(roomId));
-     console.log("user joined",roomId);
      handleConnect();
    });
 
@@ -31,8 +29,6 @@ const Finding = () => {
    };
   }, []);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const chatType = searchParams.get("type") || "video";
 
   const handleConnect = () => {
     navigate(chatType === "video" ? "/video-chat" : "/audio-chat");
