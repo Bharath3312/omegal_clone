@@ -38,11 +38,9 @@ const Landing = () => {
             variant="secondary"
             className="w-full h-14 md:h-14 text-base md:text-lg gap-3"
             onClick={() => navigate("/finding?type=audio")}
-            disabled={true}
           >
             <Headphones className="w-5 h-5" />
             Audio Chat
-            <span className="text-red-500">Soon!!</span>
           </Button>
         </div>
 
