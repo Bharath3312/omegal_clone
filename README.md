@@ -48,20 +48,6 @@ media dynamically, and chat using a data channel.
 4. Media tracks are dynamically enabled/disabled
 5. Redux manages global state (room, role, connection)
 
-## 🚧 Future Improvements
-
-- Group video calls
-- Screen sharing
-- Noise suppression
-- User reporting system
-- Call recording
-
-# WebRTC Video & Audio Calling Application
-
-A real-time peer-to-peer communication app built using WebRTC, React (Vite),
-and a Node.js signaling server. This project focuses on explaining how WebRTC
-works internally, including ICE, STUN, TURN, and media streaming.
-
 ## What is WebRTC?
 
 WebRTC (Web Real-Time Communication) is a browser technology that enables
@@ -151,10 +137,18 @@ TURN acts as a relay server:
 
 TURN is only used as a fallback when STUN fails.
 
+## TURN Server Integration (Metered.ca)
 
----
+This project uses a TURN server to ensure reliable connectivity
+when direct peer-to-peer communication fails due to strict NAT
+or firewall restrictions.
 
-## RTCPeerConnection Configuration
+Metered.ca is used as an example TURN provider.
+Any compliant TURN server can be used.
+
+
+
+##  RTCPeerConnection Configuration
 
 The application uses different ICE server configurations
 for development and production environments.
@@ -162,12 +156,38 @@ for development and production environments.
 STUN is used by default.
 TURN is enabled in production to ensure connectivity.
 
+## Environment Variables
+
+Create a `.env` file in the root directory:
+
+| Variable | Description |
+|--------|-------------|
+| VITE_TURN_STUN | STUN server URL |
+| VITE_TURN_URL | TURN server UDP URL |
+| VITE_TURN_TCP | TURN server TCP URL |
+| VITE_TURN_443 | TURN server 443 port |
+| VITE_TURN_TLS | TURN server TLS URL |
+| VITE_TURN_USERNAME | TURN username |
+| VITE_TURN_CREDENTIAL | TURN password |
+
+
+## External Resources
+
+- 🟢  [**signaling server**:](https://github.com/Bharath3312/signaling-server.git)
+- 🔄  [**Metered TURN Server**:](https://www.metered.ca/)
+
 ## Getting Started
 
-### 1. Clone the repository
 ```bash
-git clone this repo
+git clone https://github.com/Bharath3312/omegal_clone.git
 npm install
 npm run dev
+```
 
 
+## Conclusion
+
+This project demonstrates a complete real-time communication system
+using WebRTC with proper signaling, NAT traversal, and media handling.
+It focuses on understanding how WebRTC works internally rather than
+just using third-party abstractions.
